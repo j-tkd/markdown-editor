@@ -1,0 +1,10 @@
+.editor {
+  margin: 0 auto;
+  border: solid #ddd 1px;
+  resize: none;
+  width: 100%;
+}
+
+.editor h2 {
+  color: #009688;
+}

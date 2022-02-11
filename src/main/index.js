@@ -1,35 +1,91 @@
 import { app, ipcMain } from "electron";
 import createMainWindow from "./createMainWindow";
+import createFileManager from "./createFileManager";
+import showSaveAsNewFileDialog from "./showSaveAsNewFileDialog";
+import showOpenFileDialog from "./showOpenFileDialog";
+import createPDFWindow from "./createPDFWindow";
+import setAppMenu from "./setAppMenu";
+import showExportPDFDialog from "./showExportPDFDialog";
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
+let mainWindow = null;
+let fileManager = null;
+
+const openFile = async () => {
+  try {
+    const { filePaths } = await showOpenFileDialog();
+    const text = await fileManager.readFile(filePaths[0]);
+    mainWindow.sendText(text);
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+const saveFile = async () => {
+  if (!fileManager.filePath) {
+    saveAsNewFile();
+    return;
+  }
+
+  try {
+    const text = await mainWindow.requestText();
+    fileManager.overwriteFile(text);
+  } catch (err) {
+    console.error(error);
+  }
+};
+
+const saveAsNewFile = async () => {
+  try {
+    const [{ filePath }, text] = await Promise.all([
+      showSaveAsNewFileDialog(),
+      mainWindow.requestText(),
+    ]);
+    await fileManager.saveFile(filePath, text);
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+const exportPDF = async () => {
+  try {
+    const [{ filePath }, text] = await Promise.all([
+      showExportPDFDialog(),
+      mainWindow.requestText(),
+    ]);
+    const pdfWindow = createPDFWindow(text);
+    pdfWindow.on("RENDERED_CONTENTS", async () => {
+      try {
+        const pdf = await pdfWindow.generatePDF();
+        await fileManager.writePdf(filePath, pdf);
+        pdfWindow.close();
+      } catch (error) {
+        console.error(error);
+      }
+      mainWindow.window.webContents.send("PRINTED_PDF", filePath);
+    });
+  } catch (error) {
+    console.error(error);
+  }
+};
+
 app.whenReady().then(() => {
-  // setAppMenu();
-  createMainWindow();
+  mainWindow = createMainWindow();
+  fileManager = createFileManager();
+  setAppMenu({ openFile, saveFile, saveAsNewFile, exportPDF });
+
+  // mainWindow.webContents.openDevTools();
 
   app.on("activate", function () {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
-    // if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
   });
 });
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
-app.on("window-all-closed", function () {
+app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and require them here.
-
-// Renderer => Main
-// ipcMain.handle("say-hello", async (event, args) => {
-//   console.log("main:" + args);
-
-//   return `Hello from the main process: ${app.getVersion()}`;
-// });
-
-// Main => Renderer
+app.on("activate", (_e, hasVisibleWindows) => {
+  if (!hasVisibleWindows) mainWindow = createMainWindow();
+});

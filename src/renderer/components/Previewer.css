@@ -1,0 +1,7 @@
+.previewer {
+  background-color: #eee;
+  padding: 8px 20px 8px 20px;
+  position: relative;
+  overflow-y: scroll;
+  width: 100%;
+}

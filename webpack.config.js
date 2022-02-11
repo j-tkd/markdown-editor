@@ -10,7 +10,6 @@ const config = [
     // main process
     entry: {
       "main/index": "./src/main/index.js",
-      //   "renderer/App": "./src/renderer/App.jsx",
     },
     output: {
       path: path.resolve(__dirname, "dist/main"),
@@ -32,14 +31,23 @@ const config = [
     },
   },
   {
+    entry: "./src/main/preload.js",
+    output: {
+      path: path.resolve(__dirname, "dist/main"),
+      filename: "preload.js",
+    },
+    target: "electron-preload",
+  },
+  {
     // renderer process
     entry: {
       //   "main/index": "./src/main/index.js",
-      "renderer/root": "./src/renderer/App.jsx",
+      app: "./src/renderer/App.jsx",
+      pdf: "./src/renderer/PDF.jsx",
     },
     output: {
       path: path.resolve(__dirname, "dist/renderer"),
-      filename: "renderer.js",
+      filename: "[name].js",
     },
     target: "electron-renderer",
     node: {
@@ -62,7 +70,11 @@ const config = [
             "style-loader",
             {
               loader: "css-loader",
-              options: { url: false, sourceMap: enabledSourceMap },
+              options: {
+                modules: true,
+                url: false,
+                sourceMap: enabledSourceMap,
+              },
             },
           ],
         },
@@ -71,6 +83,13 @@ const config = [
     plugins: [
       new HtmlWebpackPlugin({
         template: path.join(__dirname, "/public/index.html"),
+        chunks: ["app"],
+        filename: "index.html",
+      }),
+      new HtmlWebpackPlugin({
+        template: path.join(__dirname, "/public/pdf.html"),
+        chunks: ["pdf"],
+        filename: "pdf.html",
       }),
     ],
     devServer: {
